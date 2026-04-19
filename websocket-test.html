@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ride Matching — Live Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        h2 { color: #333; }
+        .panel { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-green { background: #4CAF50; color: white; }
+        .btn-red { background: #f44336; color: white; }
+        .btn-blue { background: #2196F3; color: white; }
+        #status { font-weight: bold; padding: 5px; }
+        .connected { color: green; }
+        .disconnected { color: red; }
+        .notification { padding: 10px; margin: 5px 0; border-radius: 4px; border-left: 4px solid #2196F3; background: #e3f2fd; }
+        .ACCEPTED { border-left-color: #FF9800; background: #FFF3E0; }
+        .IN_PROGRESS { border-left-color: #2196F3; background: #E3F2FD; }
+        .COMPLETED { border-left-color: #4CAF50; background: #E8F5E9; }
+        .PAID { border-left-color: #9C27B0; background: #F3E5F5; }
+        #messages { max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h2>🚗 Ride Matching — Live Notifications</h2>
+
+    <div class="panel">
+        <h3>Connect as Rider</h3>
+        <input id="riderId" placeholder="Rider ID (e.g. 1)" value="1" />
+        <button class="btn-green" onclick="connect()">Connect</button>
+        <button class="btn-red" onclick="disconnect()">Disconnect</button>
+        <div id="status" class="disconnected">● Disconnected</div>
+    </div>
+
+    <div class="panel">
+        <h3>Live Notifications</h3>
+        <button class="btn-blue" onclick="clearMessages()">Clear</button>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let subscribed = false;
+
+        function connect() {
+            if (stompClient && stompClient.connected) {
+                disconnect();
+            }
+            const riderId = document.getElementById('riderId').value;
+            const socket = new SockJS('http://localhost:8080/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null; // disable console logs
+
+            stompClient.connect({}, function() {
+                document.getElementById('status').innerText = '● Connected as Rider ' + riderId;
+                document.getElementById('status').className = 'connected';
+
+                // Subscribe to rider notifications
+                stompClient.subscribe('/topic/rider/' + riderId, function(msg) {
+                    const n = JSON.parse(msg.body);
+                    addNotification(n);
+                });
+
+                subscribed = true;
+            }, function(error) {
+                document.getElementById('status').innerText = '● Connection failed: ' + error;
+                document.getElementById('status').className = 'disconnected';
+            });
+        }
+
+        function disconnect() {
+            if (stompClient) {
+                stompClient.disconnect();
+                subscribed = false;
+            }
+            document.getElementById('status').innerText = '● Disconnected';
+            document.getElementById('status').className = 'disconnected';
+        }
+
+        function addNotification(n) {
+            const div = document.createElement('div');
+            div.className = 'notification ' + n.status;
+            const time = new Date().toLocaleTimeString();
+            const fare = n.fare !== 'pending' ? '₹' + n.fare : 'calculating...';
+            const surge = n.surgeMultiplier !== '1.0' ? ' 🔥 ' + n.surgeMultiplier + 'x surge' : '';
+            div.innerHTML = `
+                <strong>${time}</strong> — Trip #${n.tripId}<br>
+                Status: <strong>${n.status}</strong>${surge}<br>
+                Fare: ${fare} | Distance: ${n.distanceKm !== 'pending' ? n.distanceKm + ' km' : 'in progress'}<br>
+                Payment: ${n.paymentStatus}
+            `;
+            document.getElementById('messages').prepend(div);
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

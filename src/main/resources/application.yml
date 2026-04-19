@@ -1,0 +1,84 @@
+spring:
+  application:
+    name: ride-matching-engine
+
+  # ───────────────────────────────────────────────
+  # PostgreSQL + PostGIS
+  # ───────────────────────────────────────────────
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ridedb
+    username: ride_user
+    password: ride_pass
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  # ───────────────────────────────────────────────
+  # Redis (Memurai on Windows)
+  # ───────────────────────────────────────────────
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # ───────────────────────────────────────────────
+  # Kafka
+  # ───────────────────────────────────────────────
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ride-matching-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.ridematching.engine.*
+
+# ───────────────────────────────────────────────
+# Server & Management
+# ───────────────────────────────────────────────
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+# ───────────────────────────────────────────────
+# Logging
+# ───────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.springframework.jdbc: DEBUG
+    org.flywaydb: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    com.ridematching: DEBUG
+
+# ───────────────────────────────────────────────
+# JWT
+# ───────────────────────────────────────────────
+app:
+  jwt:
+    secret: 7b2e4f8a1d6c9e3b5f0a2d7c4e8b1f3a6d9c2e5b8f1a4d7c0e3b6f9a2d5c8e1b
+    expiration: 86400000
