@@ -18,6 +18,9 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
 
   flyway:
     enabled: true
